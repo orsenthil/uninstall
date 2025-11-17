@@ -28,18 +28,16 @@ echo -e "${YELLOW}=== Flatpak Packages ===${NC}"
 FLATPAK_RESULTS=$(flatpak search "$SEARCH_TERM" 2>/dev/null || true)
 if [ -n "$FLATPAK_RESULTS" ] && [ "$FLATPAK_RESULTS" != "No matches found" ]; then
     echo "$FLATPAK_RESULTS"
-    # Extract package names - flatpak search outputs: Application ID, Name, Description
-    # Skip header lines and extract first column (Application ID)
-    while IFS= read -r line; do
-        # Skip header lines and separators
-        if [[ "$line" =~ ^Application[[:space:]]+ID ]] || [[ "$line" =~ ^[-=]+ ]] || [[ -z "$line" ]]; then
+    # Extract package names - flatpak search outputs tab-separated: Name, Description, Application ID, Version, Branch, Remote
+    # Application ID is in the 3rd column (tab-separated)
+    while IFS=$'\t' read -r name description app_id version branch remote; do
+        # Skip empty lines
+        if [ -z "$app_id" ]; then
             continue
         fi
-        # Extract Application ID (first field, format: org.example.App or similar)
-        # Match pattern like: org.example.App or com.example.app
-        if [[ $line =~ ^[[:space:]]*([a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z0-9][a-zA-Z0-9.-]*) ]]; then
-            APP_ID="${BASH_REMATCH[1]}"
-            FOUND_PACKAGES+=("flatpak:$APP_ID")
+        # Application ID format: org.example.App (at least 3 dot-separated segments)
+        if [[ "$app_id" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z0-9][a-zA-Z0-9.-]* ]]; then
+            FOUND_PACKAGES+=("flatpak:$app_id")
         fi
     done <<< "$FLATPAK_RESULTS"
 else
